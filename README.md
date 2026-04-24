@@ -5,12 +5,8 @@ A production-grade data pipeline built on Google Cloud Platform that ingests, tr
 ---
 
 ## Business Context
-
-```
 NYC Yellow Taxi generates millions of trip records every month across five boroughs. For taxi operators, fleet managers, and city planners, turning this raw data into actionable insight raises several concrete questions: where and when is demand highest? Which boroughs generate the most revenue? How do payment methods and tipping behavior vary across zones? And can we accurately predict the total fare of a trip before it ends?
 This project addresses those questions by building a production-grade data pipeline that automatically ingests, cleans, and transforms NYC TLC trip data into analysis-ready datasets. The pipeline powers two outputs: an interactive Looker Studio dashboard for operational and financial monitoring, and a BigQuery ML model that predicts total trip amount — enabling dynamic pricing simulations and demand forecasting at scale.
-
-```
 
 ---
 
