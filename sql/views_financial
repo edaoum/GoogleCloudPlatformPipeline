@@ -1,0 +1,83 @@
+-- =============================================================================
+-- views_financial.sql
+-- Pipeline NYC Yellow Taxi -- Project: ny-yellow-taxi-trips
+--
+-- Creates analytical views for financial and pricing analysis.
+-- All views read from transformed_data.cleaned_and_filtered and join
+-- with raw_yellowtrips.taxi_zone for borough-level enrichment.
+--
+-- Views created:
+--   1. revenue_over_time        -- Daily revenue breakdown by component
+--   2. payment_type_breakdown   -- Payment method distribution and tips
+--   3. avg_fare_by_borough      -- Average fare, tip, and distance per borough
+-- =============================================================================
+
+
+-- =============================================================================
+-- View 1: revenue_over_time
+-- Daily breakdown of revenue by component: fare, tips, tolls, congestion.
+-- Use case: stacked area chart in Looker Studio showing revenue composition
+-- =============================================================================
+
+CREATE OR REPLACE VIEW `ny-yellow-taxi-trips.views_fordashboard.revenue_over_time` AS
+SELECT
+  DATE(tpep_pickup_datetime)                  AS trip_date,
+  ROUND(SUM(fare_amount), 2)                  AS total_fare,
+  ROUND(SUM(tip_amount), 2)                   AS total_tips,
+  ROUND(SUM(tolls_amount), 2)                 AS total_tolls,
+  ROUND(SUM(congestion_surcharge), 2)         AS total_congestion,
+  ROUND(SUM(airport_fee), 2)                  AS total_airport_fee,
+  ROUND(SUM(total_amount), 2)                 AS total_revenue,
+  COUNT(*)                                    AS total_trips
+FROM `ny-yellow-taxi-trips.transformed_data.cleaned_and_filtered`
+GROUP BY trip_date
+ORDER BY trip_date;
+
+
+-- =============================================================================
+-- View 2: payment_type_breakdown
+-- Distribution of payment methods with average tip and total revenue.
+-- Note: tip_amount is only recorded for credit card payments (type 1).
+-- Cash tips are not captured in the dataset.
+-- Use case: pie chart or table in Looker Studio
+-- =============================================================================
+
+CREATE OR REPLACE VIEW `ny-yellow-taxi-trips.views_fordashboard.payment_type_breakdown` AS
+SELECT
+  payment_type,
+  CASE payment_type
+    WHEN 1 THEN 'Credit card'
+    WHEN 2 THEN 'Cash'
+    WHEN 3 THEN 'No charge'
+    WHEN 4 THEN 'Dispute'
+    WHEN 5 THEN 'Unknown'
+  END                                         AS payment_label,
+  COUNT(*)                                    AS total_trips,
+  ROUND(AVG(tip_amount), 2)                   AS avg_tip,
+  ROUND(SUM(total_amount), 2)                 AS total_revenue,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS pct_of_trips
+FROM `ny-yellow-taxi-trips.transformed_data.cleaned_and_filtered`
+GROUP BY payment_type, payment_label
+ORDER BY total_trips DESC;
+
+
+-- =============================================================================
+-- View 3: avg_fare_by_borough
+-- Average fare, tip, distance, and trip count per pickup borough.
+-- Use case: ranked bar chart comparing boroughs in Looker Studio
+-- =============================================================================
+
+CREATE OR REPLACE VIEW `ny-yellow-taxi-trips.views_fordashboard.avg_fare_by_borough` AS
+SELECT
+  z.Borough                                   AS pickup_borough,
+  COUNT(*)                                    AS total_trips,
+  ROUND(AVG(t.fare_amount), 2)                AS avg_fare,
+  ROUND(AVG(t.tip_amount), 2)                 AS avg_tip,
+  ROUND(AVG(t.trip_distance), 2)              AS avg_distance,
+  ROUND(AVG(t.total_amount), 2)               AS avg_total_amount,
+  ROUND(SUM(t.total_amount), 2)               AS total_revenue
+FROM `ny-yellow-taxi-trips.transformed_data.cleaned_and_filtered` t
+LEFT JOIN `ny-yellow-taxi-trips.raw_yellowtrips.taxi_zone` z
+  ON t.PULocationID = z.LocationID
+GROUP BY pickup_borough
+ORDER BY avg_fare DESC;
