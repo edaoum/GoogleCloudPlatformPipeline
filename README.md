@@ -286,7 +286,3 @@ gcloud storage cp airflow/elt_dag_pipeline.py \
 No secrets are stored in the repository. Authentication relies on Google Cloud Application Default Credentials. Never commit `sa-key.json` or `profiles.yml`.
 
 ---
-
-## License
-
-MIT License — see [LICENSE](LICENSE) for details.
