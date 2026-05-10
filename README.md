@@ -1,50 +1,181 @@
-# NYC Yellow Taxi Pipeline
+# NYC Yellow Taxi — Data Analysis
 
-A production-grade data pipeline built on Google Cloud Platform that ingests, transforms, and analyzes NYC Yellow Taxi trip data from 2020 to present. The pipeline runs automatically every week and covers the full data engineering lifecycle: ingestion, transformation, orchestration, machine learning, and visualization.
+An analytical exploration of **200M+ NYC Yellow Taxi trips** (2020–2026) built on Google Cloud Platform. This project approaches the dataset from a **Data Analyst perspective** — the focus is on extracting business insights, identifying behavioral patterns, and telling a story with data through structured notebooks and an interactive Power BI dashboard.
+
+> **Looking for the pipeline?** Switch to the [`data-engineering`](../../tree/data-engineering) branch for the full ELT pipeline, dbt models, and Airflow orchestration.
 
 ---
 
 ## Business Context
-NYC Yellow Taxi generates millions of trip records every month across five boroughs. For taxi operators, fleet managers, and city planners, turning this raw data into actionable insight raises several concrete questions: where and when is demand highest? Which boroughs generate the most revenue? How do payment methods and tipping behavior vary across zones? And can we accurately predict the total fare of a trip before it ends?
-This project addresses those questions by building a production-grade data pipeline that automatically ingests, cleans, and transforms NYC TLC trip data into analysis-ready datasets. The pipeline powers two outputs: an interactive Looker Studio dashboard for operational and financial monitoring, and a BigQuery ML model that predicts total trip amount — enabling dynamic pricing simulations and demand forecasting at scale.
+
+NYC Yellow Taxi generates millions of trip records every month across five boroughs. Raw data alone tells nothing — the value lies in what you extract from it.
+
+This project was built around five concrete business questions:
+
+- **Where and when is demand highest?** Identifying peak hours, seasonal patterns, and geographic hotspots
+- **Which zones and boroughs are most profitable?** Breaking down revenue by zone, borough, and trip type
+- **How do passengers behave?** Analysing payment preferences, tipping patterns, and passenger segmentation
+- **What happened during COVID-19?** Measuring the full impact of the pandemic on the taxi market and its recovery
+- **Are there data quality issues worth monitoring?** Surfacing anomalies — disputed trips, voided fares, unknown payment types
 
 ---
 
-## Architecture
+## What This Branch Contains
 
 ```
-NYC TLC (Public Source)
-        │
-        ▼
-download_taxi_data.py       ← Downloads Parquet files to GCS
-        │
-        ▼
-Google Cloud Storage        ← ny-yellow-taxi-trips-data-buckets
-        │
-        ▼
-load_raw_trips_data.py      ← Loads raw data into BigQuery
-        │
-        ▼
-BigQuery — raw_yellowtrips.trips
-        │
-        ▼
-dbt (stg_trips)             ← Staging layer: cleaning + type casting
-        │
-        ▼
-dbt (mart_trips_summary)    ← Mart layer: aggregations by borough/hour
-        │
-        ├──► views_fordashboard   ← SQL views for Looker Studio
-        │
-        └──► ml_dataset           ← Filtered dataset for ML training
-                    │
-                    ▼
-             BigQuery ML           ← Boosted Tree Regressor (predict total_amount)
-                    │
-                    ▼
-             Looker Studio         ← Interactive dashboards
+data-analysis/
+├── notebooks/                              # 6 analytical Jupyter notebooks
+│   ├── 00_setup_and_data_overview.ipynb    # Dataset structure & quality assessment
+│   ├── 01_operational_analysis.ipynb       # Trip efficiency & zone performance
+│   ├── 02_financial_analysis.ipynb         # Revenue breakdown & profitability
+│   ├── 03_behavioral_analysis.ipynb        # Passenger behavior & tipping patterns
+│   ├── 04_geographic_analysis.ipynb        # Spatial flows & hotspot analysis
+│   └── 05_temporal_analysis.ipynb          # Seasonality, COVID impact & YoY trends
+│
+├── config/
+│   └── bq_config.py                        # Centralized BigQuery connection
+│
+├── exports/                                # Charts exported from notebooks (PNG)
+│
+├── powerbi/
+│   └── README_powerbi.md                   # Power BI connection guide
+│
+└── requirements_analysis.txt              # Python dependencies
 ```
 
-All tasks are orchestrated by **Cloud Composer (Managed Airflow)** and run automatically every Friday at 23:00 UTC.
+---
+
+## Analytical Framework
+
+Each notebook follows the same narrative structure:
+
+**Business question → Data exploration → Visualisation → Key findings**
+
+This makes every notebook readable by both technical and non-technical audiences — a Data Analyst deliverable, not a data science experiment.
+
+---
+
+## Notebooks
+
+### 00 — Setup & Data Overview
+Establishes the foundation for the entire analysis. Assesses data quality (missing values, outliers, anomalies), documents the dataset structure, and produces global statistics.
+
+Key outputs:
+- 200M+ trips confirmed after quality filtering
+- COVID-19 impact clearly visible in 2020 data
+- Significant outliers in `total_amount` and `trip_distance` identified and handled per notebook
+- `airport_fee` and `congestion_surcharge` have expected missing values for pre-2019 trips
+
+---
+
+### 01 — Operational Analysis
+Analyses trip efficiency, distance and duration patterns, vendor comparison, and zone-level performance.
+
+Key findings:
+- Median trip distance: **2–3 miles** — short urban trips dominate
+- Late night hours (1–5 AM) generate longer, more profitable trips
+- Morning rush (7–9 AM) and evening rush (5–8 PM) are peak demand periods
+- Both vendors (Creative Mobile vs VeriFone) show near-identical operational metrics
+- **Midtown Manhattan** zones dominate pickup volume by a wide margin
+
+---
+
+### 02 — Financial Analysis
+Breaks down revenue components, tracks fare evolution over time, and identifies the most profitable zones and time periods.
+
+Key findings:
+- Total revenue collapsed **80%+** during COVID-19 lockdowns (March–June 2020)
+- Full financial recovery achieved by mid-2022
+- **Base fare** accounts for ~70% of total revenue; **tips** ~15%
+- **JFK and LaGuardia airport trips** generate 2–3x the average fare of standard Manhattan trips
+- Late night and early morning hours show the highest **revenue per mile**
+- Average fares increased **~65%** between 2020 and 2026 driven by surcharges and fare adjustments
+
+---
+
+### 03 — Behavioral Analysis
+Analyses passenger payment preferences, tipping behavior, and trip segmentation.
+
+Key findings:
+- **Credit card payments** represent 85%+ of all transactions and have grown consistently year over year
+- **Cash usage has declined significantly** since 2020 — accelerated by COVID-19
+- **80%+ of credit card passengers leave a tip** — average tip rate: 18–22% of base fare
+- Cash tips are not recorded in the TLC dataset — tip analysis is therefore limited to card payments
+- **Solo passengers account for 70%+** of all trips
+- Four distinct trip profiles identified: Very Short Budget, Short Standard, Medium Commuter, Long Premium
+
+---
+
+### 04 — Geographic Analysis
+Maps borough-to-borough flows, identifies revenue hotspots, and builds a zone performance matrix.
+
+Key findings:
+- **Manhattan accounts for 85%+ of all pickups**
+- The **Manhattan → Queens** corridor is the second largest flow, driven by airport trips
+- Revenue is highly concentrated: top 10 zones generate a disproportionate share of total revenue
+- Two distinct high-value profiles: **High Volume / Moderate Value** (Midtown) vs **Low Volume / High Value** (Airports)
+- **Revenue per mile** is highest in airport zones and Midtown Manhattan
+
+---
+
+### 05 — Temporal Analysis
+Examines seasonality, weekly cycles, hourly demand peaks, and the long-term COVID-19 impact.
+
+Key findings:
+- **Spring (March–May)** and **Autumn (September–October)** are peak seasons for trip volume
+- **Friday and Saturday evenings (8 PM–2 AM)** are the absolute peak demand periods
+- **Sunday mornings** show distinct patterns: late-starting demand and higher average fares
+- COVID-19 caused a market collapse in April 2020 — recovery was gradual through 2021
+- Average fares **increased during the COVID period** — remaining trips were longer and higher-value
+- Post-recovery trips are on average longer and more expensive than pre-pandemic trips
+
+---
+
+## Power BI Dashboard
+
+The dashboard connects directly to BigQuery and tells the story of NYC taxi data across **6 narrative pages**:
+
+| Page | Story told |
+|---|---|
+| **Executive Summary** | 203M trips, $5B+ revenue — key metrics and the full timeline at a glance |
+| **Operational Performance** | Where and when do taxis operate most efficiently? |
+| **Financial Analysis** | How is revenue generated, distributed, and evolving? |
+| **Customer Behavior** | How do passengers pay, tip, and travel? |
+| **Temporal & Geographic** | When is demand highest and where does it concentrate? |
+| **Data Quality & Anomalies** | What do disputed and voided trips reveal about data integrity? |
+
+---
+
+## BigQuery Views
+
+8 analytical views optimized for both notebooks and Power BI:
+
+| View | Description |
+|---|---|
+| `demand_over_time` | Daily trip volume and revenue |
+| `trips_by_borough` | Demand per NYC borough over time |
+| `trips_by_hour` | Hourly demand and fare patterns |
+| `revenue_over_time` | Revenue breakdown by component (fare, tips, tolls, congestion, airport) |
+| `payment_type_breakdown` | Credit card vs cash distribution and tipping |
+| `avg_fare_by_borough` | Fare, tip and distance per borough |
+| `customer_behavior` | Passenger count, tip rate and payment by year |
+| `anomalies` | Disputed, voided and unknown payment trips with daily anomaly rate |
+
+All views filter from **January 2020 to present** using `CURRENT_TIMESTAMP()` — no hardcoded dates, fully future-proof.
+
+---
+
+## Key Findings Summary
+
+| Theme | Finding |
+|---|---|
+| Volume | 200M+ trips across 2020–2026, with full COVID recovery by mid-2022 |
+| Revenue | $5B+ total revenue; average fare up 65% since 2020 |
+| Geography | Manhattan = 85%+ of pickups; airports generate 2–3x standard fares |
+| Behavior | 85%+ card payments; 80%+ tip rate on card; 70%+ solo passengers |
+| Timing | Friday/Saturday 8 PM–2 AM = peak demand; spring/autumn = peak seasons |
+| COVID | 80%+ volume collapse in April 2020; structural shift in trip profile post-recovery |
+| Anomalies | Less than 1% disputed/voided trips but visible in data quality monitoring |
 
 ---
 
@@ -52,128 +183,11 @@ All tasks are orchestrated by **Cloud Composer (Managed Airflow)** and run autom
 
 | Layer | Technology |
 |---|---|
-| Cloud Platform | Google Cloud Platform |
-| Raw Storage | Google Cloud Storage |
-| Data Warehouse | BigQuery |
-| Transformations | dbt (dbt-bigquery) |
-| Orchestration | Cloud Composer (Airflow 2.11) |
-| Machine Learning | BigQuery ML — Boosted Tree Regressor |
-| Visualization | Looker Studio |
-| Language | Python 3.12 |
-
----
-
-## Project Structure
-
-```
-nyc-yellow-taxi-pipeline/
-├── README.md
-├── requirements.txt
-├── .gitignore
-│
-├── pipeline/                          # Core Python scripts
-│   ├── download_taxi_data.py          # Downloads Parquet files from NYC TLC → GCS
-│   ├── load_raw_trips_data.py         # Loads GCS Parquet files → BigQuery raw table
-│   ├── transform_trips_data.py        # Applies quality filters on raw data
-│   ├── create_datasets.py             # Creates all BigQuery datasets
-│   └── create_ml_dataset_table.py     # Builds the ML training dataset
-│
-├── airflow/
-│   └── elt_dag_pipeline.py            # Airflow DAG — orchestrates the full pipeline
-│
-├── dbt/
-│   └── nyc_taxi_dbt/
-│       ├── dbt_project.yml
-│       ├── models/
-│       │   ├── staging/
-│       │   │   ├── sources.yml        # BigQuery source declarations
-│       │   │   └── stg_trips.sql      # Staging model: cleaning + casting
-│       │   └── marts/
-│       │       └── mart_trips_summary.sql  # Daily aggregations by borough
-│       └── macros/
-│           └── generate_schema_name.sql    # Custom schema routing macro
-│
-└── sql/
-    ├── create_raw_trips_table.sql     # DDL for the raw trips table
-    ├── views_demand.sql               # Demand & customer behavior views
-    ├── views_financial.sql            # Revenue & pricing views
-    └── views_ml_model.sql             # BigQuery ML model creation
-```
-
----
-
-## Data Source
-
-Data comes from the **NYC Taxi & Limousine Commission (TLC)** public dataset:
-- **Format**: Parquet
-- **Coverage**: January 2020 → present (~65 files)
-- **Volume**: ~200M+ rows across all years
-- **Source URL**: `https://d37ci6vzurychx.cloudfront.net/trip-data/`
-
----
-
-## Pipeline Details
-
-### 1. Ingestion — `download_taxi_data.py`
-
-Downloads monthly Parquet files from the NYC TLC CDN and uploads them directly to GCS without storing locally. Fully idempotent — files already in GCS are skipped. Execution logs are saved to GCS after each run.
-
-### 2. Loading — `load_raw_trips_data.py`
-
-Loads only new Parquet files (not yet in BigQuery) into `raw_yellowtrips.trips`. Uses a two-step strategy: load into a temporary table with schema auto-detection (to handle type drift across years), then insert into the final table with explicit `FLOAT64` cast on `passenger_count`. Tracks loaded files via a `source_file` column.
-
-### 3. Transformation — dbt
-
-dbt replaces one-off SQL scripts and adds testing, documentation, and lineage:
-
-- **Staging layer** (`stg_trips`): cleans column names, casts types, applies quality filters
-  - `passenger_count > 0`
-  - `trip_distance > 0`
-  - `payment_type != 6` (excludes voided trips)
-  - `total_amount > 0`
-- **Mart layer** (`mart_trips_summary`): daily aggregations by pickup/dropoff borough and payment type
-
-### 4. Orchestration — Airflow DAG
-
-The DAG `elt_pipeline_nyc_taxi` runs every Friday at 23:00 UTC and chains 4 tasks sequentially:
-
-```
-download_taxi_data → load_raw_trips_data → run_dbt_transformations → create_ml_dataset
-```
-
-Each script is fetched from GCS at runtime, allowing code updates without DAG redeployment. The pipeline stops if any dbt test fails, preventing bad data from reaching the ML dataset.
-
-### 5. Machine Learning — BigQuery ML
-
-A **Boosted Tree Regressor** is trained on recent trip data to predict `total_amount`:
-- Training data: trips from November 2024 onwards with card or cash payments only
-- Features: `passenger_count`, `trip_distance`, `PULocationID`, `DOLocationID`, `payment_type`, `fare_amount`, `extra`, `mta_tax`, `tolls_amount`, `congestion_surcharge`, `airport_fee`
-- Target: `total_amount`
-- Evaluation: `ML.EVALUATE` (MAE, RMSE, R²)
-- Feature importance: `ML.GLOBAL_EXPLAIN`
-
-### 6. Visualization — Looker Studio
-
-6 analytical views power the Looker Studio dashboard:
-- `demand_over_time` — daily trip volume and revenue
-- `trips_by_borough` — pickup demand per NYC borough
-- `trips_by_hour` — hourly demand patterns
-- `revenue_over_time` — fare, tips, tolls, congestion breakdown
-- `payment_type_breakdown` — payment method distribution
-- `avg_fare_by_borough` — average fare and tip per borough
-
----
-
-## BigQuery Datasets
-
-| Dataset | Description |
-|---|---|
-| `raw_yellowtrips` | Raw Parquet data loaded from GCS |
-| `transformed_data` | Cleaned and filtered trips table |
-| `views_fordashboard` | Analytical SQL views for Looker Studio |
-| `dbt_staging` | dbt staging layer (views) |
-| `dbt_marts` | dbt marts layer (materialized tables) |
-| `ml_dataset` | Filtered dataset for BigQuery ML training |
+| Data Warehouse | BigQuery (Google Cloud Platform) |
+| Analytical views | SQL — 8 optimized BigQuery views |
+| Notebooks | Python 3.12 · Jupyter · pandas · matplotlib · seaborn · plotly |
+| Dashboard | Power BI Desktop — DirectQuery on BigQuery |
+| Authentication | Google Cloud Application Default Credentials |
 
 ---
 
@@ -181,108 +195,57 @@ A **Boosted Tree Regressor** is trained on recent trip data to predict `total_am
 
 ### Prerequisites
 
-- Google Cloud project with billing enabled
-- `gcloud` CLI installed and authenticated
 - Python 3.10+
-- dbt-bigquery
+- Google Cloud account with access to `ny-yellow-taxi-trips` BigQuery project
+- `gcloud` CLI installed and authenticated
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nyc-yellow-taxi-pipeline.git
-cd nyc-yellow-taxi-pipeline
+git clone https://github.com/edaoum/GoogleCloudPlatformPipeline.git
+cd GoogleCloudPlatformPipeline
+# data-analysis is the default branch — no checkout needed
 ```
 
-### 2. Install Python dependencies
+### 2. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r data-analysis/requirements_analysis.txt
 ```
 
-### 3. Configure GCP
+### 3. Authenticate with GCP
 
 ```bash
-gcloud config set project YOUR_PROJECT_ID
 gcloud auth application-default login
+gcloud config set project ny-yellow-taxi-trips
 ```
 
-### 4. Create GCS bucket and BigQuery datasets
+### 4. Run the notebooks
 
 ```bash
-gcloud storage buckets create gs://YOUR_BUCKET_NAME \
-  --location=us-central1
-
-python3 pipeline/create_datasets.py
+cd data-analysis
+jupyter notebook
 ```
 
-### 5. Run the pipeline manually
+Open any notebook in `notebooks/` and run all cells sequentially. Each notebook is self-contained and imports from `config/bq_config.py`.
 
-```bash
-# Download Parquet files to GCS
-python3 pipeline/download_taxi_data.py
+### 5. Connect Power BI
 
-# Load into BigQuery
-python3 pipeline/load_raw_trips_data.py
-
-# Run dbt transformations
-cd dbt/nyc_taxi_dbt
-dbt run
-dbt test
-cd ../..
-
-# Create ML dataset
-python3 pipeline/create_ml_dataset_table.py
-```
-
-### 6. Configure dbt
-
-Create `~/.dbt/profiles.yml`:
-
-```yaml
-nyc_taxi_dbt:
-  target: prod
-  outputs:
-    prod:
-      type: bigquery
-      method: oauth
-      project: YOUR_PROJECT_ID
-      dataset: dbt_staging
-      location: us-central1
-      threads: 4
-      timeout_seconds: 300
-```
-
-### 7. Deploy on Cloud Composer (optional)
-
-```bash
-# Upload scripts to GCS
-gcloud storage cp pipeline/*.py gs://YOUR_BUCKET_NAME/from-git/
-
-# Package and upload dbt project
-tar -czf nyc-taxi-dbt.tar.gz dbt/nyc_taxi_dbt/
-gcloud storage cp nyc-taxi-dbt.tar.gz gs://YOUR_BUCKET_NAME/dbt/
-
-# Deploy DAG
-gcloud storage cp airflow/elt_dag_pipeline.py \
-  gs://YOUR_COMPOSER_BUCKET/dags/
-```
+See `data-analysis/powerbi/README_powerbi.md` for step-by-step BigQuery connection instructions.
 
 ---
 
-## Key Design Decisions
+## Data Source
 
-**Idempotency**: Every script checks what already exists before processing. Files already in GCS are skipped by `download_taxi_data.py`. Rows already loaded (tracked via `source_file`) are skipped by `load_raw_trips_data.py`. This makes reruns safe at any point.
+All data is sourced from the **NYC Taxi & Limousine Commission (TLC)** public dataset, ingested and transformed by the `data-engineering` branch pipeline:
 
-**Schema drift handling**: NYC TLC changed the type of `passenger_count` from `INT64` to `FLOAT64` across years. The loading script handles this by using auto-detection on a temporary table and casting explicitly before inserting into the final table.
-
-**dbt over raw SQL**: Transformations are versioned, tested, and documented via dbt instead of one-off SQL scripts. The `generate_schema_name` macro ensures dbt writes to the exact target dataset without name concatenation.
-
-**Runtime dbt install**: dbt-bigquery is installed at task runtime in the Airflow DAG to avoid dependency conflicts with the Composer/Airflow environment. This adds ~1 minute per run but eliminates version conflicts entirely.
-
----
-
-## Environment Variables
-
-No secrets are stored in the repository. Authentication relies on Google Cloud Application Default Credentials. Never commit `sa-key.json` or `profiles.yml`.
+| Table | Description |
+|---|---|
+| `transformed_data.cleaned_and_filtered` | Main analysis table — 200M+ filtered rows |
+| `raw_yellowtrips.taxi_zone` | NYC zone lookup — 265 zones |
 
 ---
+
+## Environment
+
+No secrets stored in the repository. All BigQuery connections use Google Cloud Application Default Credentials. Never commit `sa-key.json` or `profiles.yml`.
