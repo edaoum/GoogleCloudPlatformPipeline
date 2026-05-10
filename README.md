@@ -1,12 +1,26 @@
-# NYC Yellow Taxi Pipeline
+# NYC Yellow Taxi — Data Engineering Pipeline
+**Branch: `data-engineering`**
 
 A production-grade data pipeline built on Google Cloud Platform that ingests, transforms, and analyzes NYC Yellow Taxi trip data from 2020 to present. The pipeline runs automatically every week and covers the full data engineering lifecycle: ingestion, transformation, orchestration, machine learning, and visualization.
 
 ---
 
+## Repository Structure
+
+This repository contains two branches, each representing a distinct data perspective on the same dataset:
+
+| Branch | Perspective | Focus |
+|---|---|---|
+| **`data-analysis`** ← default | Data Analyst | Jupyter notebooks, analytical SQL views, Power BI dashboard |
+| **`data-engineering`** | Data Engineer | ELT pipeline, dbt, Airflow DAG, BigQuery ML |
+
+---
+
 ## Business Context
+
 NYC Yellow Taxi generates millions of trip records every month across five boroughs. For taxi operators, fleet managers, and city planners, turning this raw data into actionable insight raises several concrete questions: where and when is demand highest? Which boroughs generate the most revenue? How do payment methods and tipping behavior vary across zones? And can we accurately predict the total fare of a trip before it ends?
-This project addresses those questions by building a production-grade data pipeline that automatically ingests, cleans, and transforms NYC TLC trip data into analysis-ready datasets. The pipeline powers two outputs: an interactive Looker Studio dashboard for operational and financial monitoring, and a BigQuery ML model that predicts total trip amount — enabling dynamic pricing simulations and demand forecasting at scale.
+
+This branch addresses those questions by building a production-grade data pipeline that automatically ingests, cleans, and transforms NYC TLC trip data into analysis-ready datasets. The pipeline powers two outputs: an interactive Looker Studio dashboard for operational and financial monitoring, and a BigQuery ML model that predicts total trip amount — enabling dynamic pricing simulations and demand forecasting at scale.
 
 ---
 
@@ -66,7 +80,7 @@ All tasks are orchestrated by **Cloud Composer (Managed Airflow)** and run autom
 ## Project Structure
 
 ```
-nyc-yellow-taxi-pipeline/
+GoogleCloudPlatformPipeline/
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
@@ -106,7 +120,7 @@ nyc-yellow-taxi-pipeline/
 
 Data comes from the **NYC Taxi & Limousine Commission (TLC)** public dataset:
 - **Format**: Parquet
-- **Coverage**: January 2020 → present (~65 files)
+- **Coverage**: January 2020 → present
 - **Volume**: ~200M+ rows across all years
 - **Source URL**: `https://d37ci6vzurychx.cloudfront.net/trip-data/`
 
@@ -145,7 +159,7 @@ Each script is fetched from GCS at runtime, allowing code updates without DAG re
 
 ### 5. Machine Learning — BigQuery ML
 
-A **Boosted Tree Regressor** is trained on recent trip data to predict `total_amount`:
+A **Boosted Tree Regressor** (Gradient Boosting) is trained on recent trip data to predict `total_amount`:
 - Training data: trips from November 2024 onwards with card or cash payments only
 - Features: `passenger_count`, `trip_distance`, `PULocationID`, `DOLocationID`, `payment_type`, `fare_amount`, `extra`, `mta_tax`, `tolls_amount`, `congestion_surcharge`, `airport_fee`
 - Target: `total_amount`
@@ -189,8 +203,9 @@ A **Boosted Tree Regressor** is trained on recent trip data to predict `total_am
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nyc-yellow-taxi-pipeline.git
-cd nyc-yellow-taxi-pipeline
+git clone https://github.com/edaoum/GoogleCloudPlatformPipeline.git
+cd GoogleCloudPlatformPipeline
+git checkout data-engineering
 ```
 
 ### 2. Install Python dependencies
@@ -202,14 +217,14 @@ pip install -r requirements.txt
 ### 3. Configure GCP
 
 ```bash
-gcloud config set project YOUR_PROJECT_ID
+gcloud config set project ny-yellow-taxi-trips
 gcloud auth application-default login
 ```
 
 ### 4. Create GCS bucket and BigQuery datasets
 
 ```bash
-gcloud storage buckets create gs://YOUR_BUCKET_NAME \
+gcloud storage buckets create gs://ny-yellow-taxi-trips-data-buckets \
   --location=us-central1
 
 python3 pipeline/create_datasets.py
@@ -245,7 +260,7 @@ nyc_taxi_dbt:
     prod:
       type: bigquery
       method: oauth
-      project: YOUR_PROJECT_ID
+      project: ny-yellow-taxi-trips
       dataset: dbt_staging
       location: us-central1
       threads: 4
@@ -256,11 +271,11 @@ nyc_taxi_dbt:
 
 ```bash
 # Upload scripts to GCS
-gcloud storage cp pipeline/*.py gs://YOUR_BUCKET_NAME/from-git/
+gcloud storage cp pipeline/*.py gs://ny-yellow-taxi-trips-data-buckets/from-git/
 
 # Package and upload dbt project
 tar -czf nyc-taxi-dbt.tar.gz dbt/nyc_taxi_dbt/
-gcloud storage cp nyc-taxi-dbt.tar.gz gs://YOUR_BUCKET_NAME/dbt/
+gcloud storage cp nyc-taxi-dbt.tar.gz gs://ny-yellow-taxi-trips-data-buckets/dbt/
 
 # Deploy DAG
 gcloud storage cp airflow/elt_dag_pipeline.py \
@@ -279,10 +294,10 @@ gcloud storage cp airflow/elt_dag_pipeline.py \
 
 **Runtime dbt install**: dbt-bigquery is installed at task runtime in the Airflow DAG to avoid dependency conflicts with the Composer/Airflow environment. This adds ~1 minute per run but eliminates version conflicts entirely.
 
+**Dynamic date filtering**: All BigQuery views use `CURRENT_TIMESTAMP()` as the upper bound instead of a hardcoded year. This ensures the pipeline and dashboards automatically include new data without any code changes.
+
 ---
 
 ## Environment Variables
 
 No secrets are stored in the repository. Authentication relies on Google Cloud Application Default Credentials. Never commit `sa-key.json` or `profiles.yml`.
-
----
