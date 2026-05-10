@@ -55,7 +55,7 @@ dbt (mart_trips_summary)    ← Mart layer: aggregations by borough/hour
              BigQuery ML           ← Boosted Tree Regressor (predict total_amount)
                     │
                     ▼
-             Looker Studio         ← Interactive dashboards
+             Microsoft Power BI         ← Interactive dashboards
 ```
 
 All tasks are orchestrated by **Cloud Composer (Managed Airflow)** and run automatically every Friday at 23:00 UTC.
@@ -72,7 +72,7 @@ All tasks are orchestrated by **Cloud Composer (Managed Airflow)** and run autom
 | Transformations | dbt (dbt-bigquery) |
 | Orchestration | Cloud Composer (Airflow 2.11) |
 | Machine Learning | BigQuery ML — Boosted Tree Regressor |
-| Visualization | Looker Studio |
+| Visualization | Microsoft Power BI |
 | Language | Python 3.12 |
 
 ---
@@ -166,9 +166,9 @@ A **Boosted Tree Regressor** (Gradient Boosting) is trained on recent trip data 
 - Evaluation: `ML.EVALUATE` (MAE, RMSE, R²)
 - Feature importance: `ML.GLOBAL_EXPLAIN`
 
-### 6. Visualization — Looker Studio
+### 6. Visualization — Microsoft Power BI
 
-6 analytical views power the Looker Studio dashboard:
+6 analytical views power the Power BI dashboard:
 - `demand_over_time` — daily trip volume and revenue
 - `trips_by_borough` — pickup demand per NYC borough
 - `trips_by_hour` — hourly demand patterns
